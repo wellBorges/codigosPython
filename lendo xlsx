@@ -1,0 +1,66 @@
+import pandas as pd
+import openpyxl
+from google.colab import data_table
+data_table.enable_dataframe_formatter()
+
+# Carregar o arquivo Excel
+file_path = 'seu_arquivo.xlsx'
+workbook = openpyxl.load_workbook(file_path)
+
+# Selecionar a planilha
+sheet = workbook['Nome_da_sua_Planilha']
+
+# Função para obter o recuo de uma célula
+def get_indent(cell):
+    return int(cell.alignment.indent) if cell.alignment.indent else 0
+
+# Inicializar variáveis
+data = []
+mapeamento = []
+current_row = []
+
+linha = 1
+# Percorrer as células da planilha
+for row in sheet.iter_rows():
+    for cell in row:
+        indent = get_indent(cell)
+        cell_text = cell.value if cell.value else ""
+
+        #identifica linha, quantidade de recuos aplicados e conteúdo da célula
+        mapeamento.append([linha, indent, cell.value])
+
+        # Se o recuo for 0, é uma nova linha
+        if indent == 0:
+            if current_row:
+                data.append(current_row)
+            current_row = [cell_text]
+        else:
+            # Concatenar com a célula anterior baseado no recuo
+            if len(current_row) > indent:
+                current_row[indent] = f"{current_row[indent]} # {cell_text}"
+            else:
+                current_row.append(cell_text)
+
+    linha += 1
+
+# Adicionar a última linha se houver
+if current_row:
+    data.append(current_row)
+
+# Criar um DataFrame
+df = pd.DataFrame(data)
+
+# Fechar o arquivo Excel
+workbook.close()
+
+df.head()
+
+#data_table.disable_dataframe_formatter()
+
+df_mapeamento = pd.DataFrame(mapeamento)
+df_mapeamento.columns = ['linha', 'recuos', 'conteudo']
+#criando uma coluna ppara identificar a frequencia das linhas que representa as colunas da planilha
+df_mapeamento['ocorrencia'] = df_mapeamento.groupby('linha').cumcount() + 1
+
+#pegando apenas a coluna 3 "valor"
+df_mapeamento['conteudo'][df_mapeamento['ocorrencia'] == 3]
